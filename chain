@@ -1,0 +1,291 @@
+#!/bin/bash
+#Deploy endpoints for different kind of blockchain networks
+RPCUSER="ezdefi"
+RPCPASSWORD="ezdefimainnet66666"
+if [ "${USER}" = "root" ]; then
+    REMOTE_HOME_PATH="/root"
+    USER_PARAM=""
+else
+    REMOTE_HOME_PATH="/home/${USER}"
+    USER_PARAM="--user"
+fi
+function bitcoin {
+    systemctl stop bitcoin
+    systemctl disable bitcoin
+
+    mkdir -p $REMOTE_HOME_PATH/.bitcoin/
+    mkdir -p $REMOTE_HOME_PATH/endpoints/bitcoin/
+    cd $REMOTE_HOME_PATH/endpoints/bitcoin/
+    wget -O bitcoin.tar.gz https://bitcoin.org/bin/bitcoin-core-0.19.0.1/bitcoin-0.19.0.1-x86_64-linux-gnu.tar.gz -qO- | tar xvz
+    rm -rf $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin
+    FOLDER_NAME=$(find $REMOTE_HOME_PATH/endpoints/bitcoin/ -type d -name "bitcoin-*" -printf '%f\n')
+    echo $FOLDER_NAME
+    mv $FOLDER_NAME bitcoin
+
+    echo "server=1
+prune=100
+rpcallowip=0.0.0.0/0
+rpcbind=0.0.0.0
+rest=1
+rpcuser=$RPCUSER
+rpcpassword=$RPCPASSWORD
+port=18333
+rpcport=18332" >| $REMOTE_HOME_PATH/.bitcoin/bitcoin.conf
+    #Create bitcoin.sh
+    echo "mkdir -p $REMOTE_HOME_PATH/endpoints/bitcoin/logs"$'\n'"TS=\$(date +%Y.%m.%d-%H.%M.%S)"$'\n'"mv $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.log $REMOTE_HOME_PATH/endpoints/bitcoin/logs/\$TS.log"$'\n'"$REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin/bin/bitcoind -prune=2000 -port=18333 -datadir=$REMOTE_HOME_PATH/.bitcoin &>$REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.log" >| $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.sh
+    chmod +x $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.sh
+    #Create bitcoin.service
+	echo "[Unit]
+Description=BitcoinD
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=%h
+ExecStart=/bin/bash -x $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.sh
+
+[Install]
+WantedBy=default.target" >| $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.service
+    if [ "${USER}" = "root" ]; then
+        cp $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.service /etc/systemd/system/
+    fi
+	echo "$(tput setaf 3)Enabling bitcoin service...$(tput sgr0)"
+	systemctl daemon-reload
+	systemctl $USER_PARAM enable --force $REMOTE_HOME_PATH/endpoints/bitcoin/bitcoin.service
+	loginctl enable-linger $USER
+	#Start service
+	echo "$(tput setaf 3)Start bitcoin service...$(tput sgr0)"
+	systemctl $USER_PARAM restart bitcoin
+	echo "Done!"
+}
+
+function bitcoincash {
+    systemctl stop bitcoincash
+    systemctl disable bitcoincash
+    mkdir -p $REMOTE_HOME_PATH/.bitcoincash/
+    mkdir -p $REMOTE_HOME_PATH/endpoints/bitcoincash/
+    cd $REMOTE_HOME_PATH/endpoints/bitcoincash/
+    wget -O bitcoincash.tar.gz https://download.bitcoinabc.org/0.20.2/linux/bitcoin-abc-0.20.2-x86_64-linux-gnu.tar.gz -qO- | tar xvz
+    rm -rf $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoin-abc
+    FOLDER_NAME=$(find $REMOTE_HOME_PATH/endpoints/bitcoincash/ -type d -name "bitcoin-abc-*" -printf '%f\n')
+    echo $FOLDER_NAME
+    mv $FOLDER_NAME bitcoin-abc
+    #ln -s $REMOTE_HOME_PATH/.bitcoincash/debug.log $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.log
+    echo "server=1
+prune=2000
+rpcallowip=0.0.0.0/0
+rpcbind=0.0.0.0
+rest=1
+port=38333
+rpcport=38332
+rpcuser=$RPCUSER
+rpcpassword=$RPCPASSWORD" >| /etc/bitcoin/bitcoin.conf
+    #Create bitcoincash.sh
+    echo "mkdir -p $REMOTE_HOME_PATH/endpoints/bitcoincash/logs"$'\n'"TS=\$(date +%Y.%m.%d-%H.%M.%S)"$'\n'"mv $REMOTE_HOME_PATH/.bitcoincash/debug.log $REMOTE_HOME_PATH/endpoints/bitcoincash/logs/\$TS.log"$'\n'"$REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoin-abc/bin/bitcoind -port=38333 -rpcport=38332 -prune=2000 -conf=/etc/bitcoin/bitcoin.conf -datadir=$REMOTE_HOME_PATH/.bitcoincash -printtoconsole &>$REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.log" >| $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.sh
+    chmod +x $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.sh
+    #Create bitcoin.service
+	echo "[Unit]
+Description=BitcoinCash
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=%h
+ExecStart=/bin/bash -x $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.sh
+
+[Install]
+WantedBy=default.target" >| $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.service
+    if [ "${USER}" = "root" ]; then
+        cp $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.service /etc/systemd/system/
+    fi
+	echo "$(tput setaf 3)Enabling bitcoincash service...$(tput sgr0)"
+	systemctl daemon-reload
+	systemctl $USER_PARAM enable --force $REMOTE_HOME_PATH/endpoints/bitcoincash/bitcoincash.service
+	loginctl enable-linger $USER
+	#Start service
+	echo "$(tput setaf 3)Start bitcoincash service...$(tput sgr0)"
+	systemctl $USER_PARAM restart bitcoincash
+	echo "Done!"
+}
+
+
+function litecoin {
+    systemctl stop litecoin
+    systemctl disable litecoin
+    mkdir -p $REMOTE_HOME_PATH/.litecoin/
+    mkdir -p $REMOTE_HOME_PATH/endpoints/litecoin/
+    cd $REMOTE_HOME_PATH/endpoints/litecoin/
+    wget -O litecoin.tar.gz https://download.litecoin.org/litecoin-0.17.1/linux/litecoin-0.17.1-x86_64-linux-gnu.tar.gz -qO- | tar xvz
+    rm -rf $REMOTE_HOME_PATH/endpoints/litecoin/litecoin
+    FOLDER_NAME=$(find $REMOTE_HOME_PATH/endpoints/litecoin/ -type d -name "litecoin-*" -printf '%f\n')
+    echo $FOLDER_NAME
+    mv $FOLDER_NAME litecoin
+    echo "server=1
+prune=2000
+rpcallowip=0.0.0.0/0
+rpcbind=0.0.0.0
+rest=1
+port=19333
+rpcport=19332
+rpcuser=$RPCUSER
+rpcpassword=$RPCPASSWORD" >| $REMOTE_HOME_PATH/.litecoin/litecoin.conf
+    #Create litecoin.sh
+    echo "mkdir -p $REMOTE_HOME_PATH/endpoints/litecoin/logs"$'\n'"TS=\$(date +%Y.%m.%d-%H.%M.%S)"$'\n'"mv $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.log $REMOTE_HOME_PATH/endpoints/litecoin/logs/\$TS.log"$'\n'"$REMOTE_HOME_PATH/endpoints/litecoin/litecoin/bin/litecoind -conf=$REMOTE_HOME_PATH/.litecoin/litecoin.conf &>$REMOTE_HOME_PATH/endpoints/litecoin/litecoin.log" >| $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.sh
+    chmod +x $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.sh
+    #Create litecoin.service
+	echo "[Unit]
+Description=Litecoin
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=%h
+ExecStart=/bin/bash -x $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.sh
+
+[Install]
+WantedBy=default.target" >| $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.service
+    if [ "${USER}" = "root" ]; then
+        cp $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.service /etc/systemd/system/
+    fi
+	echo "$(tput setaf 3)Enabling litecoin service...$(tput sgr0)"
+	systemctl daemon-reload
+	systemctl $USER_PARAM enable --force $REMOTE_HOME_PATH/endpoints/litecoin/litecoin.service
+	loginctl enable-linger $USER
+	#Start service
+	echo "$(tput setaf 3)Start litecoin service...$(tput sgr0)"
+	systemctl $USER_PARAM restart litecoin
+	echo "Done!"
+}
+
+
+function dash {
+    systemctl stop dash
+    systemctl disable dash
+    mkdir -p $REMOTE_HOME_PATH/.dashcore/
+    mkdir -p $REMOTE_HOME_PATH/endpoints/dash/
+    cd $REMOTE_HOME_PATH/endpoints/dash/
+    wget -O dash.tar.gz https://github.com/dashpay/dash/releases/download/v0.14.0.3/dashcore-0.14.0.3-x86_64-linux-gnu.tar.gz -qO- | tar xvz
+    rm -rf $REMOTE_HOME_PATH/endpoints/dash/dashcore
+    FOLDER_NAME=$(find $REMOTE_HOME_PATH/endpoints/dash/ -type d -name "dashcore-*" -printf '%f\n')
+    echo $FOLDER_NAME
+    mv $FOLDER_NAME dashcore
+    echo "server=1
+prune=2000
+rpcallowip=0.0.0.0/0
+rpcbind=0.0.0.0
+rest=1
+port=19999
+rpcport=19998
+rpcuser=$RPCUSER
+rpcpassword=$RPCPASSWORD" >| $REMOTE_HOME_PATH/.dashcore/dash.conf
+    #Create dash.sh
+    echo "mkdir -p $REMOTE_HOME_PATH/endpoints/dash/logs"$'\n'"TS=\$(date +%Y.%m.%d-%H.%M.%S)"$'\n'"mv $REMOTE_HOME_PATH/endpoints/dash/dash.log $REMOTE_HOME_PATH/endpoints/dash/logs/\$TS.log"$'\n'"$REMOTE_HOME_PATH/endpoints/dash/dashcore/bin/dashd -txindex=0 -port=19999 -rpcport=19998 -prune=2000 -txindex=0 -conf=$REMOTE_HOME_PATH/.dashcore/dash.conf -printtoconsole &>$REMOTE_HOME_PATH/endpoints/dash/dash.log" >| $REMOTE_HOME_PATH/endpoints/dash/dash.sh
+    chmod +x $REMOTE_HOME_PATH/endpoints/dash/dash.sh
+    #Create dash.service
+	echo "[Unit]
+Description=Dash
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=%h
+ExecStart=/bin/bash -x $REMOTE_HOME_PATH/endpoints/dash/dash.sh
+
+[Install]
+WantedBy=default.target" >| $REMOTE_HOME_PATH/endpoints/dash/dash.service
+    if [ "${USER}" = "root" ]; then
+        cp $REMOTE_HOME_PATH/endpoints/dash/dash.service /etc/systemd/system/
+    fi
+	echo "$(tput setaf 3)Enabling dash service...$(tput sgr0)"
+	systemctl daemon-reload
+	systemctl $USER_PARAM enable --force $REMOTE_HOME_PATH/endpoints/dash/dash.service
+	loginctl enable-linger $USER
+	#Start service
+	echo "$(tput setaf 3)Start dash service...$(tput sgr0)"
+	systemctl $USER_PARAM restart dash
+	echo "Done!"
+}
+
+
+function ethereum {
+    systemctl stop ethereum
+    systemctl disable ethereum
+    apt install software-properties-common --assume-yes
+    add-apt-repository -y ppa:ethereum/ethereum
+    apt update
+    apt install ethereum --assume-yes
+    mkdir -p $REMOTE_HOME_PATH/endpoints/ethereum/
+    #Create ethereum.sh
+    echo "mkdir -p $REMOTE_HOME_PATH/endpoints/ethereum/logs"$'\n'"TS=\$(date +%Y.%m.%d-%H.%M.%S)"$'\n'"mv $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.log $REMOTE_HOME_PATH/endpoints/ethereum/logs/\$TS.log"$'\n'"/usr/bin/geth --rpc --rpcapi eth,web3 --rpccorsdomain=* --rpcaddr 0.0.0.0 --rpcport=8545 --ws --wsaddr 0.0.0.0 --wsport 8546 --syncmode=fast --rpc  --rpccorsdomain=* --ws --wsorigins=* &>$REMOTE_HOME_PATH/endpoints/ethereum/ethereum.log" >| $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.sh
+    chmod +x $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.sh
+    #Create bitcoin.service
+	echo "[Unit]
+Description=Ethereum
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=%h
+ExecStart=/bin/bash -x $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.sh
+
+[Install]
+WantedBy=default.target" >| $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.service
+    if [ "${USER}" = "root" ]; then
+        cp $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.service /etc/systemd/system/
+    fi
+	echo "$(tput setaf 3)Enabling ethereum service...$(tput sgr0)"
+	systemctl daemon-reload
+	systemctl $USER_PARAM enable --force $REMOTE_HOME_PATH/endpoints/ethereum/ethereum.service
+	loginctl enable-linger $USER
+	#Start service
+	echo "$(tput setaf 3)Start ethereum service...$(tput sgr0)"
+	systemctl $USER_PARAM restart ethereum
+	echo "Done!"
+}
+
+function log {
+    tail -F /root/endpoints/$1/$1.log
+}
+
+function guide {
+    echo "$(tput setaf 3)Blockchain endpoints deploy script$(tput sgr0)"
+    echo "$(tput setaf 6)To deploy bitcoin:$(tput sgr0) $(tput setaf 5)$PWD/$(basename $BASH_SOURCE) bitcoin$(tput sgr0)"
+    echo "$(tput setaf 6)To deploy bitcoincash:$(tput sgr0) $(tput setaf 5)$PWD/$(basename $BASH_SOURCE) bitcoincash$(tput sgr0)"
+    echo "$(tput setaf 6)To deploy litecoin:$(tput sgr0) $(tput setaf 5)$PWD/$(basename $BASH_SOURCE) litecoin$(tput sgr0)"
+    echo "$(tput setaf 6)To deploy ethereum:$(tput sgr0) $(tput setaf 5)$PWD/$(basename $BASH_SOURCE) ethereum$(tput sgr0)"
+    echo "$(tput setaf 6)To deploy dash:$(tput sgr0) $(tput setaf 5)$PWD/$(basename $BASH_SOURCE) dash$(tput sgr0)"
+}
+
+# Roll back to a block number: ./deploy.sh rollbackbitcoin BLOCKNUMBER
+function rollback {
+    BLOCK_HASH=`$1-cli getblockhash $2`
+    wait
+    echo "Rolling back $1 to block #$2:" $BLOCK_HASH
+    echo "Invalidating block #$2:"
+    $1-cli invalidateblock $BLOCK_HASH
+    wait
+    echo "Reconsidering block #$2:"
+    $1-cli reconsiderblock $BLOCK_HASH
+}
+
+# Roll back to a block number: ./deploy.sh rollbackbitcoin BLOCKNUMBER
+function rollbackdash {
+    cd ~/endpoints/dash/dashcore/bin/
+    BLOCK_HASH=`./dash-cli getblockhash $1`
+    wait
+    echo $BLOCK_HASH
+    ./dash-cli invalidateblock $BLOCK_HASH
+    wait
+    ./dash-cli reconsiderblock $BLOCK_HASH
+}
+
+if [ ! -z $1 ]; then
+    "$@"
+else
+    guide
+fi
